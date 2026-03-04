@@ -3,7 +3,7 @@
 // ============================================
 
 import { useEditorStore } from '../editor/store';
-import { ToolType } from '../model/types';
+import type { ToolType } from '../model/types';
 
 const tools: { type: ToolType; label: string; icon: string; shortcut: string }[] = [
   { type: 'select', label: 'Select', icon: '↖', shortcut: 'V' },

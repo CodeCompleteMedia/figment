@@ -13,6 +13,8 @@ import {
 } from '../model/commands';
 import { createRectangle, createEllipse, createLine, duplicateNode } from '../model/factory';
 
+export type ViewMode = 'design' | 'split' | 'code';
+
 interface EditorState {
   // Document
   document: FigmentDocument;
@@ -31,6 +33,9 @@ interface EditorState {
   // Grid
   showGrid: boolean;
 
+  // View mode (design / split / code)
+  viewMode: ViewMode;
+
   // Command history
   history: CommandHistory;
 
@@ -38,6 +43,7 @@ interface EditorState {
   setTool: (tool: ToolType) => void;
   setViewport: (v: Partial<Viewport>) => void;
   toggleGrid: () => void;
+  setViewMode: (mode: ViewMode) => void;
 
   // Selection actions
   select: (ids: string[]) => void;
@@ -90,6 +96,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
     activeTool: 'select',
     viewport: { x: 0, y: 0, zoom: 1 },
     showGrid: true,
+    viewMode: 'design' as ViewMode,
     history,
     tick: 0,
 
@@ -104,6 +111,8 @@ export const useEditorStore = create<EditorState>((set, get) => {
     setViewport: (v) => set(s => ({ viewport: { ...s.viewport, ...v } })),
 
     toggleGrid: () => set(s => ({ showGrid: !s.showGrid })),
+
+    setViewMode: (mode) => set({ viewMode: mode }),
 
     select: (ids) => set({ selectedIds: ids }),
     selectAll: () => {

@@ -4,15 +4,18 @@
 
 import { useState, useEffect } from 'react';
 import { initEngine } from '../wasm/engine';
+import { useEditorStore } from '../editor/store';
 import Toolbar from './Toolbar';
 import TopBar from './TopBar';
 import CanvasView from './Canvas';
 import LayersPanel from './LayersPanel';
 import PropertiesPanel from './PropertiesPanel';
+import CodePanel from './CodePanel';
 
 export default function EditorShell() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const viewMode = useEditorStore(s => s.viewMode);
 
   useEffect(() => {
     initEngine()
@@ -37,7 +40,13 @@ export default function EditorShell() {
       <TopBar />
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <Toolbar />
-        <CanvasView />
+
+        {/* Canvas — visible in 'design' and 'split' modes */}
+        {viewMode !== 'code' && <CanvasView />}
+
+        {/* Code Panel — visible in 'split' and 'code' modes */}
+        {viewMode !== 'design' && <CodePanel />}
+
         <LayersPanel />
         <PropertiesPanel />
       </div>

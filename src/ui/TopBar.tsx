@@ -1,8 +1,9 @@
 // ============================================
-// Top Bar — title, undo/redo, export
+// Top Bar — title, undo/redo, view toggle, export
 // ============================================
 
 import { useEditorStore } from '../editor/store';
+import type { ViewMode } from '../editor/store';
 
 export default function TopBar() {
   const history = useEditorStore(s => s.history);
@@ -12,6 +13,8 @@ export default function TopBar() {
   const toggleGrid = useEditorStore(s => s.toggleGrid);
   const exportJSON = useEditorStore(s => s.exportJSON);
   const importJSON = useEditorStore(s => s.importJSON);
+  const viewMode = useEditorStore(s => s.viewMode);
+  const setViewMode = useEditorStore(s => s.setViewMode);
   const tick = useEditorStore(s => s.tick);
 
   const handleExportJSON = () => {
@@ -67,12 +70,70 @@ export default function TopBar() {
 
       <Separator />
 
+      {/* View Mode Toggle */}
+      <ViewModeToggle mode={viewMode} onChange={setViewMode} />
+
+      <Separator />
+
       {/* File operations */}
       <BarButton onClick={handleImportJSON} title="Open File">📂</BarButton>
       <BarButton onClick={handleExportJSON} title="Save as JSON">💾</BarButton>
     </div>
   );
 }
+
+// ── View Mode Segmented Control ────────────
+
+function ViewModeToggle({
+  mode,
+  onChange,
+}: {
+  mode: ViewMode;
+  onChange: (mode: ViewMode) => void;
+}) {
+  const modes: { value: ViewMode; label: string; title: string }[] = [
+    { value: 'design', label: 'Design', title: 'Design only' },
+    { value: 'split', label: 'Split', title: 'Design + Code side by side' },
+    { value: 'code', label: 'Code', title: 'Code only' },
+  ];
+
+  return (
+    <div style={{
+      display: 'flex',
+      background: '#f5f3f0',
+      borderRadius: 6,
+      padding: 2,
+      gap: 1,
+    }}>
+      {modes.map(m => (
+        <button
+          key={m.value}
+          onClick={() => onChange(m.value)}
+          title={m.title}
+          style={{
+            background: mode === m.value ? '#fff' : 'transparent',
+            border: 'none',
+            borderRadius: 4,
+            padding: '3px 10px',
+            fontSize: 11,
+            fontWeight: mode === m.value ? 600 : 400,
+            color: mode === m.value ? '#7C5CFC' : '#756a5f',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            boxShadow: mode === m.value ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+            fontFamily: 'inherit',
+            letterSpacing: '-0.01em',
+          }}
+        >
+          {m.value === 'split' ? '<⟩' : m.value === 'code' ? '</>' : ''}
+          {' '}{m.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── Shared Components ──────────────────────
 
 function BarButton({
   children, onClick, title, disabled = false, active = false,

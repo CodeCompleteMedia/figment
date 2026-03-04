@@ -29,6 +29,7 @@ export default function CanvasView() {
 
   const tick = useEditorStore(s => s.tick);
   const activeTool = useEditorStore(s => s.activeTool);
+  const viewMode = useEditorStore(s => s.viewMode);
 
   // Resize canvas to fill container
   const resizeCanvas = useCallback(() => {
@@ -105,6 +106,24 @@ export default function CanvasView() {
     if (ready.current) renderFrame();
   }, [tick, renderFrame]);
 
+  // Reattach surface when canvas becomes visible again (view mode toggle)
+  useEffect(() => {
+    if (viewMode === 'code') return; // Canvas is hidden
+    if (!ready.current || !canvasRef.current) return;
+
+    // Reattach after a frame to ensure DOM layout is settled
+    const timer = setTimeout(() => {
+      const renderer = getRenderer();
+      if (renderer && canvasRef.current) {
+        resizeCanvas();
+        renderer.detach();
+        renderer.attach(canvasRef.current);
+        renderFrame();
+      }
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [viewMode, resizeCanvas, renderFrame]);
+
   // Keyboard events
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -131,6 +150,13 @@ export default function CanvasView() {
       else if (e.key === 'Delete' || e.key === 'Backspace') store.deleteSelected();
       else if (e.key === 'd' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); store.duplicateSelected(); }
       else if (e.key === 'Escape') store.clearSelection();
+      // View mode: Ctrl+\ cycles design → split → code
+      else if (e.key === '\\' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        const modes = ['design', 'split', 'code'] as const;
+        const idx = modes.indexOf(store.viewMode);
+        store.setViewMode(modes[(idx + 1) % 3]);
+      }
     };
 
     const onKeyUp = (e: KeyboardEvent) => {
