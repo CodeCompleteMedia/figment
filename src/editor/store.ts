@@ -130,13 +130,13 @@ export const useEditorStore = create<EditorState>((set, get) => {
 
     setPreviewShape: (preview) => set({ previewShape: preview }),
 
-    select: (ids) => set({ selectedIds: ids }),
+    select: (ids) => set(s => ({ selectedIds: ids, tick: s.tick + 1 })),
     selectAll: () => {
       const nodes = get().activePageNodes();
-      set({ selectedIds: nodes.map(n => n.id) });
+      set(s => ({ selectedIds: nodes.map(n => n.id), tick: s.tick + 1 }));
     },
-    clearSelection: () => set({ selectedIds: [] }),
-    setHovered: (id) => set({ hoveredId: id }),
+    clearSelection: () => set(s => ({ selectedIds: [], tick: s.tick + 1 })),
+    setHovered: (id) => set(s => ({ hoveredId: id, tick: s.tick + 1 })),
 
     addNode: (type, x, y, w, h) => {
       const nodes = get().activePageNodes();
