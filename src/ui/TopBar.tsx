@@ -1,7 +1,8 @@
 // ============================================
-// Top Bar — title, undo/redo, view toggle, export
+// Top Bar — title, undo/redo, view toggle, sync, export
 // ============================================
 
+import { useEffect, useRef } from 'react';
 import { useEditorStore } from '../editor/store';
 import type { ViewMode } from '../editor/store';
 import { useTheme } from './theme';
@@ -18,8 +19,104 @@ export default function TopBar() {
   const setViewMode = useEditorStore(s => s.setViewMode);
   const theme = useEditorStore(s => s.theme);
   const toggleTheme = useEditorStore(s => s.toggleTheme);
+  const syncEnabled = useEditorStore(s => s.syncEnabled);
+  const toggleSync = useEditorStore(s => s.toggleSync);
   const tick = useEditorStore(s => s.tick);
   const t = useTheme();
+
+  // ── MCP Sync ─────────────────────────────
+  const lastExportedTick = useRef(-1);
+  const lastKnownMtime = useRef(0);
+  const isImporting = useRef(false);
+
+  // Auto-export: push document to /api/sync when tick changes
+  useEffect(() => {
+    if (!syncEnabled) return;
+    if (tick === lastExportedTick.current) return;
+    if (isImporting.current) return;
+
+    const timer = setTimeout(() => {
+      const json = useEditorStore.getState().exportJSON();
+      lastExportedTick.current = useEditorStore.getState().tick;
+      fetch('/api/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: json,
+      }).catch(() => { /* dev server might not be running */ });
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [syncEnabled, tick]);
+
+  // Auto-import: poll /api/sync/status for external changes
+  useEffect(() => {
+    if (!syncEnabled) return;
+
+    const poll = setInterval(async () => {
+      try {
+        const res = await fetch('/api/sync/status');
+        const { mtime } = await res.json();
+        if (mtime && mtime > lastKnownMtime.current && lastKnownMtime.current > 0) {
+          // File changed externally — import it
+          const docRes = await fetch('/api/sync');
+          const { document: doc } = await docRes.json();
+          if (doc) {
+            isImporting.current = true;
+            useEditorStore.getState().importJSON(JSON.stringify(doc));
+            lastExportedTick.current = useEditorStore.getState().tick;
+            isImporting.current = false;
+          }
+        }
+        lastKnownMtime.current = mtime || 0;
+      } catch { /* ignore */ }
+    }, 2000);
+
+    return () => clearInterval(poll);
+  }, [syncEnabled]);
+
+  // On first enable, try to import existing file; fall back to exporting current state
+  useEffect(() => {
+    if (!syncEnabled) {
+      lastKnownMtime.current = 0;
+      lastExportedTick.current = -1;
+      return;
+    }
+
+    (async () => {
+      try {
+        // Check if a document file already exists with content
+        const res = await fetch('/api/sync');
+        const { document: doc, mtime } = await res.json();
+
+        if (doc && doc.pages && doc.pages.length > 0 &&
+            doc.pages.some((p: { nodes?: unknown[] }) => p.nodes && p.nodes.length > 0)) {
+          // File has content — import it
+          isImporting.current = true;
+          useEditorStore.getState().importJSON(JSON.stringify(doc));
+          lastExportedTick.current = useEditorStore.getState().tick;
+          isImporting.current = false;
+          lastKnownMtime.current = mtime || 0;
+        } else {
+          // File is empty or missing — export current state
+          const json = useEditorStore.getState().exportJSON();
+          lastExportedTick.current = useEditorStore.getState().tick;
+          await fetch('/api/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: json,
+          });
+          const statusRes = await fetch('/api/sync/status');
+          const { mtime: newMtime } = await statusRes.json();
+          lastKnownMtime.current = newMtime || 0;
+        }
+      } catch {
+        // If sync endpoint not available, just record tick
+        lastExportedTick.current = useEditorStore.getState().tick;
+      }
+    })();
+  }, [syncEnabled]);
+
+  // ── File operations ──────────────────────
 
   const handleExportJSON = () => {
     const json = exportJSON();
@@ -82,6 +179,15 @@ export default function TopBar() {
       {/* Theme toggle */}
       <BarButton onClick={toggleTheme} title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`} t={t}>
         {theme === 'light' ? '🌙' : '☀️'}
+      </BarButton>
+
+      <Separator color={t.separatorColor} />
+
+      {/* MCP Sync toggle */}
+      <BarButton onClick={toggleSync} title={syncEnabled ? 'Sync ON — click to disable' : 'Enable MCP sync'} active={syncEnabled} t={t}>
+        <span style={{ fontSize: 12, fontWeight: 500 }}>
+          {syncEnabled ? 'SYNC' : 'SYNC'}
+        </span>
       </BarButton>
 
       <Separator color={t.separatorColor} />

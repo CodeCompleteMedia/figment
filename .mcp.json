@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "figment": {
+      "command": "node",
+      "args": ["--import", "tsx/esm", "src/mcp/server.ts"],
+      "env": {
+        "FIGMENT_DOC_PATH": "./figment-doc.json"
+      }
+    }
+  }
+}

@@ -85,6 +85,10 @@ interface EditorState {
   exportJSON: () => string;
   importJSON: (json: string) => void;
 
+  // MCP sync
+  syncEnabled: boolean;
+  toggleSync: () => void;
+
   // Force re-render
   tick: number;
   requestRender: () => void;
@@ -118,6 +122,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
     viewMode: 'design' as ViewMode,
     theme: (typeof localStorage !== 'undefined' && localStorage.getItem('figment-theme') === 'dark' ? 'dark' : 'light') as Theme,
     history,
+    syncEnabled: false,
     tick: 0,
 
     activePageNodes: () => {
@@ -224,6 +229,8 @@ export const useEditorStore = create<EditorState>((set, get) => {
         console.error('Failed to import document:', e);
       }
     },
+
+    toggleSync: () => set(s => ({ syncEnabled: !s.syncEnabled })),
 
     requestRender: () => set(s => ({ tick: s.tick + 1 })),
   };

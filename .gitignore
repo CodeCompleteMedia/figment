@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# MCP sync file (runtime state, not source)
+figment-doc.json
