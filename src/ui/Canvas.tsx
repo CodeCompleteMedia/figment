@@ -155,6 +155,37 @@ export default function CanvasView() {
       else if (e.key === 'Delete' || e.key === 'Backspace') store.deleteSelected();
       else if (e.key === 'd' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); store.duplicateSelected(); }
       else if (e.key === 'Escape') store.clearSelection();
+      // Layer reorder shortcuts: Ctrl+]/[ and Ctrl+Shift+]/[
+      else if (e.key === ']' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        const ids = store.selectedIds;
+        if (ids.length !== 1) return;
+        const nodes = store.activePageNodes();
+        const idx = nodes.findIndex(n => n.id === ids[0]);
+        if (idx === -1) return;
+        if (e.shiftKey) {
+          // Bring to Front
+          if (idx < nodes.length - 1) store.reorderNode(idx, nodes.length - 1);
+        } else {
+          // Bring Forward
+          if (idx < nodes.length - 1) store.reorderNode(idx, idx + 1);
+        }
+      }
+      else if (e.key === '[' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        const ids = store.selectedIds;
+        if (ids.length !== 1) return;
+        const nodes = store.activePageNodes();
+        const idx = nodes.findIndex(n => n.id === ids[0]);
+        if (idx === -1) return;
+        if (e.shiftKey) {
+          // Send to Back
+          if (idx > 0) store.reorderNode(idx, 0);
+        } else {
+          // Send Backward
+          if (idx > 0) store.reorderNode(idx, idx - 1);
+        }
+      }
       // View mode: Ctrl+\ cycles design → split → code
       else if (e.key === '\\' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
