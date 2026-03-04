@@ -4,6 +4,7 @@
 
 import { useEditorStore } from '../editor/store';
 import type { ViewMode } from '../editor/store';
+import { useTheme } from './theme';
 
 export default function TopBar() {
   const history = useEditorStore(s => s.history);
@@ -15,7 +16,10 @@ export default function TopBar() {
   const importJSON = useEditorStore(s => s.importJSON);
   const viewMode = useEditorStore(s => s.viewMode);
   const setViewMode = useEditorStore(s => s.setViewMode);
+  const theme = useEditorStore(s => s.theme);
+  const toggleTheme = useEditorStore(s => s.toggleTheme);
   const tick = useEditorStore(s => s.tick);
+  const t = useTheme();
 
   const handleExportJSON = () => {
     const json = exportJSON();
@@ -43,41 +47,48 @@ export default function TopBar() {
 
   return (
     <div style={{
-      height: 44, background: '#fff',
-      borderBottom: '1px solid #ebe5df',
+      height: 44, background: t.panelBg,
+      borderBottom: `1px solid ${t.panelBorder}`,
       display: 'flex', alignItems: 'center',
       padding: '0 16px', gap: 8,
       flexShrink: 0,
     }}>
       {/* Title */}
-      <span style={{ fontSize: 14, fontWeight: 600, color: '#3d3733', letterSpacing: '-0.01em' }}>
+      <span style={{ fontSize: 14, fontWeight: 600, color: t.panelText, letterSpacing: '-0.01em' }}>
         Figment
       </span>
-      <span style={{ fontSize: 12, color: '#b8ada2', marginLeft: 4 }}>
+      <span style={{ fontSize: 12, color: t.panelTextMuted, marginLeft: 4 }}>
         Untitled
       </span>
 
       <div style={{ flex: 1 }} />
 
       {/* Undo/Redo */}
-      <BarButton onClick={undo} title="Undo (Ctrl+Z)" disabled={!history.canUndo}>↩</BarButton>
-      <BarButton onClick={redo} title="Redo (Ctrl+Y)" disabled={!history.canRedo}>↪</BarButton>
+      <BarButton onClick={undo} title="Undo (Ctrl+Z)" disabled={!history.canUndo} t={t}>↩</BarButton>
+      <BarButton onClick={redo} title="Redo (Ctrl+Y)" disabled={!history.canRedo} t={t}>↪</BarButton>
 
-      <Separator />
+      <Separator color={t.separatorColor} />
 
       {/* Grid */}
-      <BarButton onClick={toggleGrid} title="Toggle Grid (G)" active={showGrid}>⊞</BarButton>
+      <BarButton onClick={toggleGrid} title="Toggle Grid (G)" active={showGrid} t={t}>⊞</BarButton>
 
-      <Separator />
+      <Separator color={t.separatorColor} />
 
       {/* View Mode Toggle */}
-      <ViewModeToggle mode={viewMode} onChange={setViewMode} />
+      <ViewModeToggle mode={viewMode} onChange={setViewMode} t={t} />
 
-      <Separator />
+      <Separator color={t.separatorColor} />
+
+      {/* Theme toggle */}
+      <BarButton onClick={toggleTheme} title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`} t={t}>
+        {theme === 'light' ? '🌙' : '☀️'}
+      </BarButton>
+
+      <Separator color={t.separatorColor} />
 
       {/* File operations */}
-      <BarButton onClick={handleImportJSON} title="Open File">📂</BarButton>
-      <BarButton onClick={handleExportJSON} title="Save as JSON">💾</BarButton>
+      <BarButton onClick={handleImportJSON} title="Open File" t={t}>📂</BarButton>
+      <BarButton onClick={handleExportJSON} title="Save as JSON" t={t}>💾</BarButton>
     </div>
   );
 }
@@ -87,9 +98,11 @@ export default function TopBar() {
 function ViewModeToggle({
   mode,
   onChange,
+  t,
 }: {
   mode: ViewMode;
   onChange: (mode: ViewMode) => void;
+  t: ReturnType<typeof useTheme>;
 }) {
   const modes: { value: ViewMode; label: string; title: string }[] = [
     { value: 'design', label: 'Design', title: 'Design only' },
@@ -100,7 +113,7 @@ function ViewModeToggle({
   return (
     <div style={{
       display: 'flex',
-      background: '#f5f3f0',
+      background: t.segmentBg,
       borderRadius: 6,
       padding: 2,
       gap: 1,
@@ -111,16 +124,16 @@ function ViewModeToggle({
           onClick={() => onChange(m.value)}
           title={m.title}
           style={{
-            background: mode === m.value ? '#fff' : 'transparent',
+            background: mode === m.value ? t.segmentActiveBg : 'transparent',
             border: 'none',
             borderRadius: 4,
             padding: '3px 10px',
             fontSize: 11,
             fontWeight: mode === m.value ? 600 : 400,
-            color: mode === m.value ? '#7C5CFC' : '#756a5f',
+            color: mode === m.value ? t.accent : t.panelTextSecondary,
             cursor: 'pointer',
             transition: 'all 0.15s ease',
-            boxShadow: mode === m.value ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+            boxShadow: mode === m.value ? t.segmentActiveShadow : 'none',
             fontFamily: 'inherit',
             letterSpacing: '-0.01em',
           }}
@@ -136,13 +149,14 @@ function ViewModeToggle({
 // ── Shared Components ──────────────────────
 
 function BarButton({
-  children, onClick, title, disabled = false, active = false,
+  children, onClick, title, disabled = false, active = false, t,
 }: {
   children: React.ReactNode;
   onClick: () => void;
   title: string;
   disabled?: boolean;
   active?: boolean;
+  t: ReturnType<typeof useTheme>;
 }) {
   return (
     <button
@@ -150,10 +164,10 @@ function BarButton({
       title={title}
       disabled={disabled}
       style={{
-        background: active ? '#f5f3ff' : 'none',
+        background: active ? t.accentBg : 'none',
         border: 'none', cursor: disabled ? 'default' : 'pointer',
         fontSize: 16, padding: '4px 8px', borderRadius: 6,
-        color: disabled ? '#d8cfc6' : active ? '#7C5CFC' : '#756a5f',
+        color: disabled ? t.disabledColor : active ? t.accent : t.panelTextSecondary,
         opacity: disabled ? 0.5 : 1,
         transition: 'all 0.1s ease',
       }}
@@ -163,6 +177,6 @@ function BarButton({
   );
 }
 
-function Separator() {
-  return <div style={{ width: 1, height: 20, background: '#ebe5df', margin: '0 4px' }} />;
+function Separator({ color }: { color: string }) {
+  return <div style={{ width: 1, height: 20, background: color, margin: '0 4px' }} />;
 }

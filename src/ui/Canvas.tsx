@@ -10,6 +10,7 @@ import { SelectTool } from '../editor/tools/select-tool';
 import { ShapeTool } from '../editor/tools/shape-tool';
 import type { ToolHandler } from '../editor/tools/tool-handler';
 import type { Point, ToolType } from '../model/types';
+import { useTheme, getThemeTokens } from './theme';
 
 const toolInstances: Record<ToolType, ToolHandler> = {
   select: new SelectTool(),
@@ -30,6 +31,7 @@ export default function CanvasView() {
   const tick = useEditorStore(s => s.tick);
   const activeTool = useEditorStore(s => s.activeTool);
   const viewMode = useEditorStore(s => s.viewMode);
+  const t = useTheme();
 
   // Resize canvas to fill container
   const resizeCanvas = useCallback(() => {
@@ -52,6 +54,7 @@ export default function CanvasView() {
 
     const store = useEditorStore.getState();
     const nodes = store.activePageNodes();
+    const tokens = getThemeTokens();
     renderer.render(
       nodes,
       store.viewport,
@@ -59,6 +62,7 @@ export default function CanvasView() {
       store.hoveredId,
       store.showGrid,
       store.previewShape,
+      tokens,
     );
   }, []);
 
@@ -297,7 +301,7 @@ export default function CanvasView() {
   return (
     <div
       ref={containerRef}
-      style={{ flex: 1, overflow: 'hidden', position: 'relative', background: '#f5f1ed' }}
+      style={{ flex: 1, overflow: 'hidden', position: 'relative', background: t.canvasBg }}
     >
       <canvas
         ref={canvasRef}

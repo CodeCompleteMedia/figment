@@ -4,6 +4,7 @@
 
 import { useEditorStore } from '../editor/store';
 import type { ToolType } from '../model/types';
+import { useTheme } from './theme';
 
 const tools: { type: ToolType; label: string; icon: string; shortcut: string }[] = [
   { type: 'select', label: 'Select', icon: '↖', shortcut: 'V' },
@@ -15,6 +16,7 @@ const tools: { type: ToolType; label: string; icon: string; shortcut: string }[]
 export default function Toolbar() {
   const activeTool = useEditorStore(s => s.activeTool);
   const setTool = useEditorStore(s => s.setTool);
+  const t = useTheme();
 
   return (
     <div style={{
@@ -22,8 +24,8 @@ export default function Toolbar() {
       flexDirection: 'column',
       gap: 4,
       padding: '12px 8px',
-      background: '#fff',
-      borderRight: '1px solid #ebe5df',
+      background: t.panelBg,
+      borderRight: `1px solid ${t.panelBorder}`,
       width: 48,
       flexShrink: 0,
       alignItems: 'center',
@@ -48,8 +50,8 @@ export default function Toolbar() {
             border: 'none', cursor: 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 18,
-            background: activeTool === tool.type ? '#f5f3ff' : 'transparent',
-            color: activeTool === tool.type ? '#7C5CFC' : '#756a5f',
+            background: activeTool === tool.type ? t.accentBg : 'transparent',
+            color: activeTool === tool.type ? t.accent : t.panelTextSecondary,
             transition: 'all 0.1s ease',
           }}
         >
@@ -67,9 +69,10 @@ export default function Toolbar() {
 
 function ZoomIndicator() {
   const zoom = useEditorStore(s => s.viewport.zoom);
+  const t = useTheme();
   return (
     <div style={{
-      fontSize: 10, color: '#968a7d', textAlign: 'center',
+      fontSize: 10, color: t.panelTextSecondary, textAlign: 'center',
       fontFamily: 'monospace', padding: '4px 0',
     }}>
       {Math.round(zoom * 100)}%

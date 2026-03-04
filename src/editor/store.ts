@@ -14,6 +14,7 @@ import {
 import { createRectangle, createEllipse, createLine, duplicateNode } from '../model/factory';
 
 export type ViewMode = 'design' | 'split' | 'code';
+export type Theme = 'light' | 'dark';
 
 /** Lightweight shape preview shown during drag-to-create */
 export interface PreviewShape {
@@ -48,6 +49,9 @@ interface EditorState {
   // View mode (design / split / code)
   viewMode: ViewMode;
 
+  // Theme
+  theme: Theme;
+
   // Command history
   history: CommandHistory;
 
@@ -57,6 +61,7 @@ interface EditorState {
   toggleGrid: () => void;
   setViewMode: (mode: ViewMode) => void;
   setPreviewShape: (preview: PreviewShape | null) => void;
+  toggleTheme: () => void;
 
   // Selection actions
   select: (ids: string[]) => void;
@@ -111,6 +116,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
     viewport: { x: 0, y: 0, zoom: 1 },
     showGrid: true,
     viewMode: 'design' as ViewMode,
+    theme: (typeof localStorage !== 'undefined' && localStorage.getItem('figment-theme') === 'dark' ? 'dark' : 'light') as Theme,
     history,
     tick: 0,
 
@@ -129,6 +135,12 @@ export const useEditorStore = create<EditorState>((set, get) => {
     setViewMode: (mode) => set({ viewMode: mode }),
 
     setPreviewShape: (preview) => set({ previewShape: preview }),
+
+    toggleTheme: () => set(s => {
+      const next = s.theme === 'light' ? 'dark' : 'light';
+      try { localStorage.setItem('figment-theme', next); } catch {}
+      return { theme: next, tick: s.tick + 1 };
+    }),
 
     select: (ids) => set(s => ({ selectedIds: ids, tick: s.tick + 1 })),
     selectAll: () => {

@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { initEngine } from '../wasm/engine';
 import { useEditorStore } from '../editor/store';
+import { useTheme } from './theme';
 import Toolbar from './Toolbar';
 import TopBar from './TopBar';
 import CanvasView from './Canvas';
@@ -16,6 +17,8 @@ export default function EditorShell() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const viewMode = useEditorStore(s => s.viewMode);
+  const theme = useEditorStore(s => s.theme);
+  const t = useTheme();
 
   useEffect(() => {
     initEngine()
@@ -26,6 +29,13 @@ export default function EditorShell() {
         setLoading(false);
       });
   }, []);
+
+  // Apply data-theme attribute and scrollbar styles to document
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    document.documentElement.style.setProperty('--scrollbar-track', t.scrollbarTrack);
+    document.documentElement.style.setProperty('--scrollbar-thumb', t.scrollbarThumb);
+  }, [theme, t]);
 
   if (loading) return <LoadingScreen />;
   if (error) return <ErrorScreen message={error} />;
@@ -55,12 +65,13 @@ export default function EditorShell() {
 }
 
 function LoadingScreen() {
+  const t = useTheme();
   return (
     <div style={{
       height: '100vh', width: '100vw',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
-      background: 'linear-gradient(135deg, #f5f3ff, #fff5f3, #fffbf0)',
+      background: t.loadingGradient,
       fontFamily: "Inter, -apple-system, sans-serif",
       gap: 16,
     }}>
@@ -73,10 +84,10 @@ function LoadingScreen() {
       }}>
         F
       </div>
-      <div style={{ fontSize: 18, fontWeight: 600, color: '#3d3733', letterSpacing: '-0.02em' }}>
+      <div style={{ fontSize: 18, fontWeight: 600, color: t.loadingText, letterSpacing: '-0.02em' }}>
         Figment
       </div>
-      <div style={{ fontSize: 13, color: '#968a7d' }}>
+      <div style={{ fontSize: 13, color: t.panelTextSecondary }}>
         Loading rendering engine...
       </div>
       <style>{`
@@ -90,17 +101,18 @@ function LoadingScreen() {
 }
 
 function ErrorScreen({ message }: { message: string }) {
+  const t = useTheme();
   return (
     <div style={{
       height: '100vh', width: '100vw',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
-      background: '#fbf9f7',
+      background: t.errorBg,
       fontFamily: "Inter, -apple-system, sans-serif",
       gap: 12,
     }}>
       <div style={{ fontSize: 36 }}>⚠️</div>
-      <div style={{ fontSize: 15, color: '#c43d27', fontWeight: 500 }}>{message}</div>
+      <div style={{ fontSize: 15, color: t.errorText, fontWeight: 500 }}>{message}</div>
     </div>
   );
 }

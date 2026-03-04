@@ -6,6 +6,7 @@ import type CanvasKitInit from 'canvaskit-wasm';
 import type { SceneNode, Color, Viewport, HandlePosition } from '../model/types';
 import { COLORS } from '../model/types';
 import type { PreviewShape } from '../editor/store';
+import type { ThemeTokens } from '../ui/theme';
 
 type CanvasKit = Awaited<ReturnType<typeof CanvasKitInit>>;
 type Surface = any;
@@ -19,6 +20,7 @@ export class FigmentRenderer {
   private ck: CanvasKit;
   private surface: Surface | null = null;
   private canvasEl: HTMLCanvasElement | null = null;
+  private _theme: ThemeTokens | null = null;
 
   constructor(ck: CanvasKit) {
     this.ck = ck;
@@ -58,14 +60,21 @@ export class FigmentRenderer {
     hoveredId: string | null,
     showGrid: boolean,
     previewShape?: PreviewShape | null,
+    theme?: ThemeTokens | null,
   ) {
     if (!this.surface || !this.canvasEl) return;
 
     const canvas: Canvas = this.surface.getCanvas();
     const { width, height } = this.canvasEl;
 
-    // Clear background
-    canvas.clear(this.ck.Color(251, 249, 247, 1)); // warm white (neutral-50)
+    // Store theme for use in sub-methods
+    this._theme = theme ?? null;
+
+    // Clear background (theme-aware)
+    const cr = theme?.canvasClearR ?? 251;
+    const cg = theme?.canvasClearG ?? 249;
+    const cb = theme?.canvasClearB ?? 247;
+    canvas.clear(this.ck.Color(cr, cg, cb, 1));
 
     canvas.save();
 
@@ -102,7 +111,13 @@ export class FigmentRenderer {
   }
 
   private drawGrid(canvas: Canvas, viewport: Viewport, screenW: number, screenH: number) {
-    const gridPaint = this.makePaint({ r: 216, g: 207, b: 198, a: 0.3 }, 'stroke', 1 / viewport.zoom);
+    const t = this._theme;
+    const gridPaint = this.makePaint({
+      r: t?.canvasGridR ?? 216,
+      g: t?.canvasGridG ?? 207,
+      b: t?.canvasGridB ?? 198,
+      a: t?.canvasGridA ?? 0.3,
+    }, 'stroke', 1 / viewport.zoom);
 
     // Determine visible area in canvas space
     const left = -viewport.x / viewport.zoom;
@@ -209,7 +224,10 @@ export class FigmentRenderer {
     // Draw handles
     const handleSize = HANDLE_SIZE / zoom;
     const handles = this.getHandlePositions(node);
-    const handleFill = this.makePaint({ r: 255, g: 255, b: 255, a: 1 }, 'fill');
+    const hfR = this._theme?.canvasClearR ?? 255;
+    const hfG = this._theme?.canvasClearG ?? 255;
+    const hfB = this._theme?.canvasClearB ?? 255;
+    const handleFill = this.makePaint({ r: hfR, g: hfG, b: hfB, a: 1 }, 'fill');
     const handleStroke = this.makePaint(selColor, 'stroke', 1.5 / zoom);
 
     for (const [, pos] of handles) {
@@ -313,9 +331,12 @@ export class FigmentRenderer {
     textPaint.setColor(this.ck.Color(124, 92, 252, 1));
     textPaint.setAntiAlias(true);
 
-    // Background pill
+    // Background pill (theme-aware)
     const bgPaint = new this.ck.Paint();
-    bgPaint.setColor(this.ck.Color(255, 255, 255, 0.9));
+    const lbR = this._theme?.previewLabelBgR ?? 255;
+    const lbG = this._theme?.previewLabelBgG ?? 255;
+    const lbB = this._theme?.previewLabelBgB ?? 255;
+    bgPaint.setColor(this.ck.Color(lbR, lbG, lbB, 0.9));
     bgPaint.setStyle(this.ck.PaintStyle.Fill);
     bgPaint.setAntiAlias(true);
 
