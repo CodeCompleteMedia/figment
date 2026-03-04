@@ -5,6 +5,7 @@
 import type CanvasKitInit from 'canvaskit-wasm';
 import type { SceneNode, Color, Viewport, HandlePosition } from '../model/types';
 import { COLORS } from '../model/types';
+import type { PreviewShape } from '../editor/store';
 
 type CanvasKit = Awaited<ReturnType<typeof CanvasKitInit>>;
 type Surface = any;
@@ -56,6 +57,7 @@ export class FigmentRenderer {
     selectedIds: string[],
     hoveredId: string | null,
     showGrid: boolean,
+    previewShape?: PreviewShape | null,
   ) {
     if (!this.surface || !this.canvasEl) return;
 
@@ -87,6 +89,11 @@ export class FigmentRenderer {
       if (selectedIds.includes(node.id) && node.visible) {
         this.drawSelectionBox(canvas, node, viewport.zoom);
       }
+    }
+
+    // Draw preview shape (rubber-band during drag-to-create)
+    if (previewShape) {
+      this.drawPreviewShape(canvas, previewShape, viewport.zoom);
     }
 
     canvas.restore();
@@ -230,6 +237,116 @@ export class FigmentRenderer {
       ['bottom', { x: x + w / 2, y: y + h }],
       ['left', { x, y: y + h / 2 }],
     ];
+  }
+
+  /** Draw a preview shape (rubber-band outline during drag-to-create) */
+  private drawPreviewShape(canvas: Canvas, preview: PreviewShape, zoom: number) {
+    const { type, x, y, width: w, height: h } = preview;
+
+    // Skip if too small (just a click, no drag yet)
+    if (Math.abs(w) < 1 && Math.abs(h) < 1) return;
+
+    // Semi-transparent fill in brand primary color
+    const fillPaint = new this.ck.Paint();
+    fillPaint.setColor(this.ck.Color(124, 92, 252, 0.08)); // Figment violet, very light
+    fillPaint.setStyle(this.ck.PaintStyle.Fill);
+    fillPaint.setAntiAlias(true);
+
+    // Dashed stroke in brand primary
+    const strokePaint = new this.ck.Paint();
+    strokePaint.setColor(this.ck.Color(124, 92, 252, 0.7)); // Figment violet
+    strokePaint.setStyle(this.ck.PaintStyle.Stroke);
+    strokePaint.setStrokeWidth(1.5 / zoom);
+    strokePaint.setAntiAlias(true);
+
+    // Create dash effect
+    const dashLen = 6 / zoom;
+    const gapLen = 4 / zoom;
+    const dashEffect = this.ck.PathEffect.MakeDash([dashLen, gapLen]);
+    strokePaint.setPathEffect(dashEffect);
+
+    if (type === 'line') {
+      // Lines: draw from (x,y) to (x+w, y+h)
+      strokePaint.setStrokeWidth(2 / zoom);
+      strokePaint.setStrokeCap(this.ck.StrokeCap.Round);
+      canvas.drawLine(x, y, x + w, y + h, strokePaint);
+
+      // Draw small circles at start and end points
+      const dotPaint = new this.ck.Paint();
+      dotPaint.setColor(this.ck.Color(124, 92, 252, 0.9));
+      dotPaint.setStyle(this.ck.PaintStyle.Fill);
+      dotPaint.setAntiAlias(true);
+      const dotRadius = 3 / zoom;
+      canvas.drawCircle(x, y, dotRadius, dotPaint);
+      canvas.drawCircle(x + w, y + h, dotRadius, dotPaint);
+      dotPaint.delete();
+    } else if (type === 'ellipse') {
+      const rect = this.ck.LTRBRect(x, y, x + w, y + h);
+      canvas.drawOval(rect, fillPaint);
+      canvas.drawOval(rect, strokePaint);
+    } else {
+      // Rectangle
+      const rect = this.ck.LTRBRect(x, y, x + w, y + h);
+      canvas.drawRect(rect, fillPaint);
+      canvas.drawRect(rect, strokePaint);
+    }
+
+    // Draw size label
+    this.drawSizeLabel(canvas, x, y, w, h, zoom);
+
+    fillPaint.delete();
+    strokePaint.delete();
+    dashEffect.delete();
+  }
+
+  /** Draw a small label showing dimensions near the preview shape */
+  private drawSizeLabel(canvas: Canvas, x: number, y: number, w: number, h: number, zoom: number) {
+    const absW = Math.abs(Math.round(w));
+    const absH = Math.abs(Math.round(h));
+    if (absW < 2 && absH < 2) return;
+
+    const label = `${absW} × ${absH}`;
+    const fontSize = 11 / zoom;
+
+    const font = new this.ck.Font(null, fontSize);
+    const textPaint = new this.ck.Paint();
+    textPaint.setColor(this.ck.Color(124, 92, 252, 1));
+    textPaint.setAntiAlias(true);
+
+    // Background pill
+    const bgPaint = new this.ck.Paint();
+    bgPaint.setColor(this.ck.Color(255, 255, 255, 0.9));
+    bgPaint.setStyle(this.ck.PaintStyle.Fill);
+    bgPaint.setAntiAlias(true);
+
+    // Measure text width via glyph widths (CanvasKit API)
+    const glyphIds = font.getGlyphIDs(label);
+    const glyphWidths = font.getGlyphWidths(glyphIds);
+    const textWidth = glyphWidths.reduce((sum: number, w: number) => sum + w, 0);
+    const padding = 4 / zoom;
+    const labelX = x + Math.abs(w) / 2 - textWidth / 2;
+    const labelY = y + Math.abs(h) + fontSize + 8 / zoom;
+
+    const bgRect = this.ck.LTRBRect(
+      labelX - padding,
+      labelY - fontSize - padding / 2,
+      labelX + textWidth + padding,
+      labelY + padding,
+    );
+
+    const bgRRect = this.ck.RRectXY(bgRect, 3 / zoom, 3 / zoom);
+    canvas.drawRRect(bgRRect, bgPaint);
+
+    // CanvasKit drawText signature: (text, x, y, paint, font)
+    try {
+      canvas.drawText(label, labelX, labelY, textPaint, font);
+    } catch {
+      // Fallback: skip label if drawText fails
+    }
+
+    font.delete();
+    textPaint.delete();
+    bgPaint.delete();
   }
 
   /** Export the scene to PNG as a Uint8Array */

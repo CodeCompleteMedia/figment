@@ -24,15 +24,57 @@ export class ShapeTool implements ToolHandler {
   onPointerDown(ctx: ToolContext) {
     this.dragging = true;
     this.startCanvas = { ...ctx.canvasPoint };
+
+    // Set initial zero-size preview at click point
+    const store = useEditorStore.getState();
+    store.setPreviewShape({
+      type: this.shapeType,
+      x: ctx.canvasPoint.x,
+      y: ctx.canvasPoint.y,
+      width: 0,
+      height: 0,
+    });
   }
 
-  onPointerMove(_ctx: ToolContext) {
-    // Could show a preview shape here
+  onPointerMove(ctx: ToolContext) {
+    if (!this.dragging) return;
+
+    const store = useEditorStore.getState();
+
+    let x: number, y: number, w: number, h: number;
+
+    if (this.shapeType === 'line') {
+      // Lines: start point as origin, width/height encode the endpoint delta
+      x = this.startCanvas.x;
+      y = this.startCanvas.y;
+      w = ctx.canvasPoint.x - this.startCanvas.x;
+      h = ctx.canvasPoint.y - this.startCanvas.y;
+    } else {
+      x = Math.min(this.startCanvas.x, ctx.canvasPoint.x);
+      y = Math.min(this.startCanvas.y, ctx.canvasPoint.y);
+      w = Math.abs(ctx.canvasPoint.x - this.startCanvas.x);
+      h = Math.abs(ctx.canvasPoint.y - this.startCanvas.y);
+
+      // Shift-constrain to square/circle
+      if (ctx.shiftKey) {
+        const size = Math.max(w, h);
+        w = size;
+        h = size;
+      }
+    }
+
+    store.setPreviewShape({ type: this.shapeType, x, y, width: w, height: h });
+    store.requestRender();
   }
 
   onPointerUp(ctx: ToolContext) {
     if (!this.dragging) return;
     this.dragging = false;
+
+    const store = useEditorStore.getState();
+
+    // Clear the preview
+    store.setPreviewShape(null);
 
     let x = Math.min(this.startCanvas.x, ctx.canvasPoint.x);
     let y = Math.min(this.startCanvas.y, ctx.canvasPoint.y);
@@ -54,7 +96,6 @@ export class ShapeTool implements ToolHandler {
       h = size;
     }
 
-    const store = useEditorStore.getState();
     store.addNode(this.shapeType, x, y, w, h);
   }
 }

@@ -15,6 +15,15 @@ import { createRectangle, createEllipse, createLine, duplicateNode } from '../mo
 
 export type ViewMode = 'design' | 'split' | 'code';
 
+/** Lightweight shape preview shown during drag-to-create */
+export interface PreviewShape {
+  type: 'rectangle' | 'ellipse' | 'line';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 interface EditorState {
   // Document
   document: FigmentDocument;
@@ -26,6 +35,9 @@ interface EditorState {
 
   // Tool
   activeTool: ToolType;
+
+  // Preview shape (during drag-to-create)
+  previewShape: PreviewShape | null;
 
   // Viewport
   viewport: Viewport;
@@ -44,6 +56,7 @@ interface EditorState {
   setViewport: (v: Partial<Viewport>) => void;
   toggleGrid: () => void;
   setViewMode: (mode: ViewMode) => void;
+  setPreviewShape: (preview: PreviewShape | null) => void;
 
   // Selection actions
   select: (ids: string[]) => void;
@@ -94,6 +107,7 @@ export const useEditorStore = create<EditorState>((set, get) => {
     selectedIds: [],
     hoveredId: null,
     activeTool: 'select',
+    previewShape: null,
     viewport: { x: 0, y: 0, zoom: 1 },
     showGrid: true,
     viewMode: 'design' as ViewMode,
@@ -113,6 +127,8 @@ export const useEditorStore = create<EditorState>((set, get) => {
     toggleGrid: () => set(s => ({ showGrid: !s.showGrid })),
 
     setViewMode: (mode) => set({ viewMode: mode }),
+
+    setPreviewShape: (preview) => set({ previewShape: preview }),
 
     select: (ids) => set({ selectedIds: ids }),
     selectAll: () => {

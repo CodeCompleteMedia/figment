@@ -58,6 +58,7 @@ export default function CanvasView() {
       store.selectedIds,
       store.hoveredId,
       store.showGrid,
+      store.previewShape,
     );
   }, []);
 
