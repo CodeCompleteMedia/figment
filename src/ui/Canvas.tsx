@@ -302,31 +302,42 @@ export default function CanvasView() {
     });
   }, []);
 
-  const onWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+  // Attach wheel handler as a native event with { passive: false }
+  // so that preventDefault() actually blocks the browser's Ctrl+scroll page zoom.
+  // React's onWheel is passive by default and cannot prevent browser zoom.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
 
-    const store = useEditorStore.getState();
-    const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    const screenPoint = {
-      x: (e.clientX - rect.left) * dpr,
-      y: (e.clientY - rect.top) * dpr,
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const store = useEditorStore.getState();
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const screenPoint = {
+        x: (e.clientX - rect.left) * dpr,
+        y: (e.clientY - rect.top) * dpr,
+      };
+
+      if (e.ctrlKey || e.metaKey) {
+        // Pinch-to-zoom
+        const newViewport = zoomAtPoint(store.viewport, screenPoint, e.deltaY);
+        store.setViewport(newViewport);
+      } else {
+        // Pan
+        store.setViewport({
+          x: store.viewport.x - e.deltaX * dpr,
+          y: store.viewport.y - e.deltaY * dpr,
+        });
+      }
+      renderFrame();
     };
 
-    if (e.ctrlKey || e.metaKey) {
-      // Pinch-to-zoom
-      const newViewport = zoomAtPoint(store.viewport, screenPoint, e.deltaY);
-      store.setViewport(newViewport);
-    } else {
-      // Pan
-      store.setViewport({
-        x: store.viewport.x - e.deltaX * dpr,
-        y: store.viewport.y - e.deltaY * dpr,
-      });
-    }
-    renderFrame();
+    container.addEventListener('wheel', onWheel, { passive: false });
+    return () => container.removeEventListener('wheel', onWheel);
   }, [renderFrame]);
 
   return (
@@ -340,7 +351,6 @@ export default function CanvasView() {
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
-        onWheel={onWheel}
       />
     </div>
   );
